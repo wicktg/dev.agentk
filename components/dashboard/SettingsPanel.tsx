@@ -67,7 +67,7 @@ export default function SettingsPanel({ open }: Props) {
 
     setTimeout(() => {
       if (cmd === "/email") {
-        const email    = user?.email ?? "<em style='color:rgba(255,255,255,0.6)'>not set</em>";
+        const email    = user?.email ?? "<em style='color:#B2A28C'>not set</em>";
         const provider = authProvider === "google" ? "Google" : authProvider === "password" ? "Email / Password" : authProvider ?? "Unknown";
         addBot(
           `<strong>Email:</strong> ${email}<br><br>` +
@@ -77,17 +77,17 @@ export default function SettingsPanel({ open }: Props) {
       } else if (cmd === "/account") {
         const name = user?.name
           ? `<strong>${user.name}</strong>`
-          : `<em style="color:rgba(255,255,255,0.6)">not set</em>`;
+          : `<em style="color:#B2A28C">not set</em>`;
         addBot(
           `<strong>Display name:</strong> ${name}<br><br>` +
           `To change your display name, type:<br>` +
-          `<span style="font-family:monospace;background:rgba(255,255,255,0.25);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">/account Your New Name</span>`
+          `<span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/account Your New Name</span>`
         );
 
       } else if (cmd.startsWith("/account ")) {
         const newName = trimmed.slice(9).trim();
         if (!newName) {
-          addBot(`Name can't be empty. Try: <span style="font-family:monospace;background:rgba(255,255,255,0.25);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">/account Your Name</span>`);
+          addBot(`Name can't be empty. Try: <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/account Your Name</span>`);
           return;
         }
         updateName({ name: newName }).then(() => {
@@ -101,19 +101,19 @@ export default function SettingsPanel({ open }: Props) {
           const t = tokenRow.token;
           addBot(
             `Your Agentk Token:<br><br>` +
-            `<span style="font-family:monospace;background:rgba(255,255,255,0.25);color:#fff;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:700;letter-spacing:0.08em">${t}</span>` +
+            `<span style="font-family:monospace;background:#F0EFED;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:700;letter-spacing:0.08em">${t}</span>` +
             `&nbsp;<button onclick="navigator.clipboard.writeText('${t}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" ` +
-            `style="font-size:10px;font-weight:700;color:#fff;background:none;border:none;cursor:pointer;font-family:inherit">Copy</button><br><br>` +
-            `<em style="font-size:10px;color:rgba(255,255,255,0.7)">Open @AgentKBot on Telegram and paste this token to start receiving alerts.</em>`
+            `style="font-size:10px;font-weight:700;color:#DF849D;background:none;border:none;cursor:pointer;font-family:inherit">Copy</button><br><br>` +
+            `<em style="font-size:10px;color:#B2A28C">Open @AgentKBot on Telegram and paste this token to start receiving alerts.</em>`
           );
         } else {
           generateToken().then(({ token }) => {
             addBot(
               `Your Agentk Token:<br><br>` +
-              `<span style="font-family:monospace;background:rgba(255,255,255,0.25);color:#fff;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:700;letter-spacing:0.08em">${token}</span>` +
+              `<span style="font-family:monospace;background:#F0EFED;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:700;letter-spacing:0.08em">${token}</span>` +
               `&nbsp;<button onclick="navigator.clipboard.writeText('${token}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" ` +
-              `style="font-size:10px;font-weight:700;color:#fff;background:none;border:none;cursor:pointer;font-family:inherit">Copy</button><br><br>` +
-              `<em style="font-size:10px;color:rgba(255,255,255,0.7)">Open @AgentKBot on Telegram and paste this token to start receiving alerts.</em>`
+              `style="font-size:10px;font-weight:700;color:#DF849D;background:none;border:none;cursor:pointer;font-family:inherit">Copy</button><br><br>` +
+              `<em style="font-size:10px;color:#B2A28C">Open @AgentKBot on Telegram and paste this token to start receiving alerts.</em>`
             );
           });
         }
@@ -121,7 +121,7 @@ export default function SettingsPanel({ open }: Props) {
       } else if (cmd === "/delete") {
         addBot(
           `⚠️ <strong>This will permanently delete your account and all data.</strong><br><br>` +
-          `Type <span style="font-family:monospace;background:rgba(255,255,255,0.25);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">/delete confirm</span> to proceed.`
+          `Type <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/delete confirm</span> to proceed.`
         );
 
       } else if (cmd === "/delete confirm") {
@@ -162,7 +162,7 @@ export default function SettingsPanel({ open }: Props) {
               </div>
               <div
                 dangerouslySetInnerHTML={{ __html: m.html ?? "" }}
-                style={{ borderRadius: "16px", borderBottomLeftRadius: "3px", padding: "8px 12px", fontSize: "12px", lineHeight: "1.6", background: "linear-gradient(135deg,#FF9A8B,#DF849D)", color: "#fff", border: "none", flex: 1, minWidth: 0, wordBreak: "break-word" }}
+                style={{ borderRadius: "16px", borderBottomLeftRadius: "3px", padding: "8px 12px", fontSize: "12px", lineHeight: "1.6", background: "#fff", color: "#191918", border: "1px solid rgba(0,0,0,0.07)", flex: 1, minWidth: 0, wordBreak: "break-word" }}
               />
             </div>
           ) : (

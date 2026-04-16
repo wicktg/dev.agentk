@@ -295,14 +295,17 @@ function SubredditInput({
     }
     debRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(value)}&limit=6&include_over_18=false&include_profiles=false`,
-        );
+        const url = `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(value)}&limit=6&include_over_18=false&include_profiles=false`;
+        console.log("[subreddit-ac] fetching:", url);
+        const res = await fetch(url);
+        console.log("[subreddit-ac] status:", res.status, res.ok);
         const json = await res.json();
-        setSuggestions(
-          (json?.data?.children ?? []).map((c: any) => c.data.display_name),
-        );
-      } catch {
+        console.log("[subreddit-ac] json:", JSON.stringify(json).slice(0, 300));
+        const names = (json?.data?.children ?? []).map((c: any) => c.data.display_name);
+        console.log("[subreddit-ac] suggestions:", names);
+        setSuggestions(names);
+      } catch (e) {
+        console.error("[subreddit-ac] error:", e);
         setSuggestions([]);
       }
     }, 300);

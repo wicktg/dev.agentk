@@ -702,7 +702,7 @@ function TelegramMockup({ visible }: { visible: boolean }) {
       </div>
 
       {/* Chat area */}
-      <div style={{ padding: "8px 14px 14px", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "8px 14px 14px", display: "flex", flexDirection: "column", background: "#fff" }}>
         {/* Today */}
         <div style={{ textAlign: "center", margin: "4px 0 8px" }}>
           <span
@@ -738,7 +738,7 @@ function TelegramMockup({ visible }: { visible: boolean }) {
                 background: "#fff",
                 borderRadius: "15px 15px 6px 6px",
                 padding: "5px 8px 6px",
-                boxShadow: "rgba(0,0,0,0.08) 0px 1px 2px 0px",
+                border: "1px solid rgba(0,0,0,0.1)",
               }}
             >
               <div style={{ color: "#1a1a1a", fontSize: "15px", lineHeight: "1.3125" }}>
@@ -779,15 +779,15 @@ function TelegramMockup({ visible }: { visible: boolean }) {
             {/* Go to post inline keyboard button */}
             <button
               style={{
-                background: "rgba(112,117,121,0.15)",
-                border: "none",
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.1)",
                 color: "#3e4145",
                 fontSize: "14px",
                 fontWeight: 500,
                 height: "36px",
                 borderRadius: "6px 6px 15px 15px",
                 cursor: "default",
-                marginTop: "1px",
+                marginTop: "3px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

@@ -400,7 +400,7 @@ const MOCK_POSTS = [
     numComments: 58,
   },
   {
-    title: "Built a SaaS side project last month — here's everything I learned about getting first users",
+    title: "Built a SaaS side project last month. Here's everything I learned about getting first users",
     subreddit: "SaaS",
     author: "devguy99",
     age: "2h",
@@ -783,21 +783,6 @@ function TelegramMockup({ visible }: { visible: boolean }) {
           </span>
         </div>
 
-        {/* Bot: welcome */}
-        <TgBotMsg>
-          👋 Welcome to <strong style={{ fontWeight: 500 }}>Agentk</strong>!
-          <br /><br />
-          Enter your Agentk Token to connect your alerts:
-        </TgBotMsg>
-
-        {/* User: token */}
-        <TgUserMsg>4SX8PEMSPUAS</TgUserMsg>
-
-        {/* Bot: connected */}
-        <TgBotMsg>
-          ✅ <strong style={{ fontWeight: 500 }}>Connected!</strong> You&apos;ll receive Reddit alerts here whenever new posts match your keywords.
-        </TgBotMsg>
-
         {/* Bot: alert (animated in on scroll) */}
         <div
           style={{
@@ -922,7 +907,7 @@ export default function SocialProofFlow() {
             Set your keywords and subreddits once.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            Tell AgentK what you care about — a handful of keywords, a few subreddits. Drag the handle to switch between panels.
+            Tell AgentK what you care about. A handful of keywords, a few subreddits. Drag the handle to switch between panels.
           </p>
         </div>
         <div className="w-full md:w-[62%]">
@@ -937,7 +922,7 @@ export default function SocialProofFlow() {
             Matching posts surface in your feed.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            Every 2 minutes AgentK scans your subreddits and drops fresh matching posts into your dashboard — upvotes, comments, and author karma visible at a glance.
+            Every 2 minutes AgentK scans your subreddits and drops fresh matching posts into your dashboard. Upvotes, comments, and author karma visible at a glance.
           </p>
         </div>
         <div className="w-full md:w-[62%]">
@@ -952,7 +937,7 @@ export default function SocialProofFlow() {
             Instant Telegram alert the moment it happens.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            No need to check the dashboard. The moment a new matching post goes live, AgentK fires a Telegram message — one tap to open the post and join the conversation.
+            No need to check the dashboard. The moment a new matching post goes live, AgentK fires a Telegram message. One tap to open the post and join the conversation.
           </p>
         </div>
         <div className="w-full md:w-[62%] flex justify-center">

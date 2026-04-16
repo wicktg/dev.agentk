@@ -23,7 +23,7 @@ export default function Pricing() {
 
         <p className="text-lg font-medium leading-relaxed mb-16 max-w-xl mx-auto" style={{ color: "#62584F" }}>
           Unlimited keywords. Unlimited subreddits. Instant Telegram alerts.
-          AgentK is completely free — no card, no trial, no catch.
+          AgentK is completely free. No card, no trial, no catch.
         </p>
 
         <a

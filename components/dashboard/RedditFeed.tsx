@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { POPULAR_SUBREDDITS } from "@/lib/popular-subreddits";
 
 interface Post {
   _id: string;
@@ -291,20 +290,12 @@ function SubredditInput({
   useEffect(() => {
     if (value.length < 2) { setSuggestions([]); return; }
 
-    // Show local matches instantly
-    const q = value.toLowerCase();
-    const local = POPULAR_SUBREDDITS.filter(s => s.toLowerCase().startsWith(q))
-      .concat(POPULAR_SUBREDDITS.filter(s => !s.toLowerCase().startsWith(q) && s.toLowerCase().includes(q)))
-      .slice(0, 6);
-    setSuggestions(local);
-
-    // Fetch live results from Convex (Convex IPs not blocked by Reddit)
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const results = await searchSubs({ query: value });
-        if (!cancelled && results.length > 0) setSuggestions(results);
-      } catch { /* keep local results */ }
+        if (!cancelled) setSuggestions(results);
+      } catch { setSuggestions([]); }
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [value]);

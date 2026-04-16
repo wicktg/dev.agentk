@@ -45,7 +45,7 @@ export const upsertUserSettings = mutation({
       fetchLoopId = await ctx.scheduler.runAfter(0, internal.reddit.doFetchLoop, { userId });
     }
 
-    // Transition → inactive: subreddits removed — stop loop immediately
+    // Transition → inactive: all keywords OR all subreddits cleared — stop loop immediately
     if (prevHasBoth && !nowHasBoth) {
       if (fetchLoopId) {
         try { await ctx.scheduler.cancel(fetchLoopId); } catch {}

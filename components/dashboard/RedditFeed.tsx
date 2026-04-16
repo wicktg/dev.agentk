@@ -296,7 +296,7 @@ function SubredditInput({
     debRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/reddit-search?q=${encodeURIComponent(value)}`,
+          `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(value)}&limit=6&include_over_18=false&include_profiles=false`,
         );
         const json = await res.json();
         setSuggestions(

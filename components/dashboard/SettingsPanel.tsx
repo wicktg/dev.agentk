@@ -148,7 +148,7 @@ export default function SettingsPanel({ open }: Props) {
 
   if (!open) return null;
 
-  const initial = (user?.name ?? user?.email ?? "?").charAt(0).toUpperCase();
+  const initial = (user?.email ?? user?.name ?? "?").charAt(0).toUpperCase();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#FDF7EF" }}>

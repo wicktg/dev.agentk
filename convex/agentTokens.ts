@@ -65,11 +65,26 @@ export const getByUser = internalQuery({
   },
 });
 
-// Internal: bind a Telegram chatId to a token row after successful authentication.
+// Internal: find a token row by telegramChatId (used by webhook to check auth state).
+export const getByChat = internalQuery({
+  args: { telegramChatId: v.string() },
+  handler: async (ctx, { telegramChatId }) => {
+    return await ctx.db
+      .query("agentTokens")
+      .withIndex("by_chat", (q) => q.eq("telegramChatId", telegramChatId))
+      .unique();
+  },
+});
+
+// Internal: bind a Telegram chatId (and optional username) to a token row.
 export const bindChatId = internalMutation({
-  args: { tokenId: v.id("agentTokens"), telegramChatId: v.string() },
-  handler: async (ctx, { tokenId, telegramChatId }) => {
-    await ctx.db.patch(tokenId, { telegramChatId });
+  args: {
+    tokenId:          v.id("agentTokens"),
+    telegramChatId:   v.string(),
+    telegramUsername: v.optional(v.string()),
+  },
+  handler: async (ctx, { tokenId, telegramChatId, telegramUsername }) => {
+    await ctx.db.patch(tokenId, { telegramChatId, telegramUsername });
   },
 });
 

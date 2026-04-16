@@ -1,6 +1,14 @@
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+
+// Internal: fetch a user by ID (used by Telegram webhook for /account).
+export const getUserById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db.get(userId);
+  },
+});
 
 export const currentUser = query({
   args: {},

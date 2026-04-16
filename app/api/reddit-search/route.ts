@@ -6,23 +6,33 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? "";
   if (!q) return NextResponse.json(EMPTY);
 
-  try {
-    const res = await fetch(
-      `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`,
-      {
+  const urls = [
+    `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`,
+    `https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(q)}&limit=6`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          "Accept": "application/json",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache",
         },
         redirect: "follow",
-      }
-    );
-
-    if (!res.ok) return NextResponse.json(EMPTY);
-    const json = await res.json();
-    // autocomplete_v2 returns same shape: data.children[].data.display_name
-    return NextResponse.json(json);
-  } catch {
-    return NextResponse.json(EMPTY);
+        cache: "no-store",
+      });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (!text.startsWith("{")) continue; // got HTML, skip
+      const json = JSON.parse(text);
+      const children = json?.data?.children ?? [];
+      if (children.length > 0) return NextResponse.json(json);
+    } catch {
+      continue;
+    }
   }
+
+  return NextResponse.json(EMPTY);
 }

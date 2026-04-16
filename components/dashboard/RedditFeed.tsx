@@ -295,15 +295,11 @@ function SubredditInput({
     }
     debRef.current = setTimeout(async () => {
       try {
-        const url = `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(value)}&limit=6&include_over_18=false&include_profiles=false`;
-        console.log("[subreddit-ac] fetching:", url);
-        const res = await fetch(url);
-        console.log("[subreddit-ac] status:", res.status, res.ok);
+        const res = await fetch(`/api/reddit-search?q=${encodeURIComponent(value)}`);
         const json = await res.json();
-        console.log("[subreddit-ac] json:", JSON.stringify(json).slice(0, 300));
-        const names = (json?.data?.children ?? []).map((c: any) => c.data.display_name);
-        console.log("[subreddit-ac] suggestions:", names);
-        setSuggestions(names);
+        setSuggestions(
+          (json?.data?.children ?? []).map((c: any) => c.data.display_name),
+        );
       } catch (e) {
         console.error("[subreddit-ac] error:", e);
         setSuggestions([]);

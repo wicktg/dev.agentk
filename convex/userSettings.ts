@@ -16,11 +16,12 @@ export const getUserSettings = query({
 
 export const upsertUserSettings = mutation({
   args: {
-    keywords:    v.array(v.string()),
-    excluded:    v.array(v.string()),
-    subreddits:  v.array(v.string()),
-    minUpvotes:  v.number(),
-    minComments: v.number(),
+    keywords:      v.array(v.string()),
+    excluded:      v.array(v.string()),
+    subreddits:    v.array(v.string()),
+    minUpvotes:    v.number(),
+    minComments:   v.number(),
+    keywordGroups: v.optional(v.array(v.object({ name: v.string(), keywords: v.array(v.string()) }))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

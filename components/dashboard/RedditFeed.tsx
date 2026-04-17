@@ -79,6 +79,11 @@ function getSubredditColor(name: string): string {
 // ── Toolbar modal types ───────────────────────────────────────────────────────
 type ModalType = "keywords" | "subreddit" | "metrics" | null;
 
+interface KeywordGroup {
+  name: string;
+  keywords: string[];
+}
+
 // ── Pill helpers ─────────────────────────────────────────────────────────────
 function Pill({
   label,
@@ -524,13 +529,19 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
   const upsertSettings = useMutation(api.userSettings.upsertUserSettings);
 
   // Local copies of settings for modals
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywordGroups, setKeywordGroups] = useState<KeywordGroup[]>([{ name: "General", keywords: [] }]);
+  const [activeGroupIdx, setActiveGroupIdx] = useState(0);
+  const [editingGroupIdx, setEditingGroupIdx] = useState<number | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState("");
   const [excluded, setExcluded] = useState<string[]>([]);
   const [subreddits, setSubreddits] = useState<string[]>([]);
   const [minUpvotes, setMinUpvotes] = useState(0);
   const [minComments, setMinComments] = useState(0);
   const [subInput, setSubInput] = useState("");
   const [loaded, setLoaded] = useState(false);
+
+  // Derived flat keywords (union of all groups, deduped)
+  const keywords = Array.from(new Set(keywordGroups.flatMap((g) => g.keywords)));
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -558,7 +569,12 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
 
   // Populate from Convex settings
   if (settings && !loaded) {
-    setKeywords(settings.keywords);
+    const stored = settings.keywordGroups;
+    if (stored && stored.length > 0) {
+      setKeywordGroups(stored);
+    } else if (settings.keywords.length > 0) {
+      setKeywordGroups([{ name: "General", keywords: settings.keywords }]);
+    }
     setExcluded(settings.excluded);
     setSubreddits(settings.subreddits);
     setMinUpvotes(settings.minUpvotes);
@@ -567,15 +583,17 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
   }
 
   async function saveSettings(patch: {
-    keywords?: string[];
+    keywordGroups?: KeywordGroup[];
     excluded?: string[];
     subreddits?: string[];
     minUpvotes?: number;
     minComments?: number;
   }) {
     if (!isAuthenticated) return;
+    const groups = patch.keywordGroups ?? keywordGroups;
     const merged = {
-      keywords: patch.keywords ?? keywords,
+      keywords: Array.from(new Set(groups.flatMap((g) => g.keywords))),
+      keywordGroups: groups,
       excluded: patch.excluded ?? excluded,
       subreddits: patch.subreddits ?? subreddits,
       minUpvotes: patch.minUpvotes ?? minUpvotes,
@@ -1001,25 +1019,182 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
                 fontSize: "10px",
                 fontWeight: 600,
                 color: "#62584F",
-                marginBottom: "5px",
+                marginBottom: "6px",
                 display: "block",
               }}
             >
               Track
             </label>
+            {/* Group chips */}
+            <div
+              style={{
+                display: "flex",
+                gap: "5px",
+                flexWrap: "wrap",
+                alignItems: "center",
+                marginBottom: "8px",
+              }}
+            >
+              {keywordGroups.map((g, i) =>
+                editingGroupIdx === i ? (
+                  <input
+                    key={`edit-${i}`}
+                    autoFocus
+                    value={editingGroupName}
+                    onChange={(e) => setEditingGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const name = editingGroupName.trim() || g.name;
+                        const next = keywordGroups.map((gr, j) =>
+                          j === i ? { ...gr, name } : gr
+                        );
+                        setKeywordGroups(next);
+                        setEditingGroupIdx(null);
+                        saveSettings({ keywordGroups: next });
+                      }
+                      if (e.key === "Escape") setEditingGroupIdx(null);
+                    }}
+                    onBlur={() => {
+                      const name = editingGroupName.trim() || g.name;
+                      const next = keywordGroups.map((gr, j) =>
+                        j === i ? { ...gr, name } : gr
+                      );
+                      setKeywordGroups(next);
+                      setEditingGroupIdx(null);
+                      saveSettings({ keywordGroups: next });
+                    }}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      width: "80px",
+                      padding: "2px 8px",
+                      borderRadius: "9999px",
+                      border: "1px solid #DF849D",
+                      background: "#fff",
+                      color: "#191918",
+                      outline: "none",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                ) : (
+                  <span
+                    key={`group-${i}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      padding: "3px 8px 3px 10px",
+                      borderRadius: "9999px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      background: activeGroupIdx === i ? "#DF849D" : "#F0EFED",
+                      color: activeGroupIdx === i ? "#fff" : "#62584F",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                    onClick={() => setActiveGroupIdx(i)}
+                    onDoubleClick={() => {
+                      setEditingGroupIdx(i);
+                      setEditingGroupName(g.name);
+                    }}
+                  >
+                    {g.name}
+                    {keywordGroups.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = keywordGroups.filter((_, j) => j !== i);
+                          const newActive =
+                            activeGroupIdx === i
+                              ? Math.max(0, i - 1)
+                              : activeGroupIdx > i
+                                ? activeGroupIdx - 1
+                                : activeGroupIdx;
+                          setKeywordGroups(next);
+                          setActiveGroupIdx(newActive);
+                          saveSettings({ keywordGroups: next });
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                          lineHeight: 1,
+                          opacity: 0.5,
+                          display: "flex",
+                          alignItems: "center",
+                          color: "inherit",
+                          marginLeft: "1px",
+                        }}
+                      >
+                        <svg
+                          viewBox="0 0 10 10"
+                          width="7"
+                          height="7"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        >
+                          <path d="M2 2l6 6M8 2L2 8" />
+                        </svg>
+                      </button>
+                    )}
+                  </span>
+                )
+              )}
+              <button
+                onClick={() => {
+                  const newName = `Group ${keywordGroups.length + 1}`;
+                  const next = [...keywordGroups, { name: newName, keywords: [] }];
+                  const newIdx = next.length - 1;
+                  setKeywordGroups(next);
+                  setActiveGroupIdx(newIdx);
+                  setEditingGroupIdx(newIdx);
+                  setEditingGroupName(newName);
+                }}
+                style={{
+                  width: "22px",
+                  height: "22px",
+                  borderRadius: "9999px",
+                  border: "1px dashed #C4B9AA",
+                  background: "none",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  color: "#B2A28C",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0,
+                  fontFamily: "inherit",
+                  lineHeight: 1,
+                }}
+              >
+                +
+              </button>
+            </div>
             <TagBox
-              pills={keywords}
+              pills={keywordGroups[activeGroupIdx]?.keywords ?? []}
               onAdd={(v) => {
                 if (!keywords.includes(v) && keywords.length < 15) {
-                  const next = [...keywords, v];
-                  setKeywords(next);
-                  saveSettings({ keywords: next });
+                  const next = keywordGroups.map((g, i) =>
+                    i === activeGroupIdx
+                      ? { ...g, keywords: [...g.keywords, v] }
+                      : g
+                  );
+                  setKeywordGroups(next);
+                  saveSettings({ keywordGroups: next });
                 }
               }}
-              onRemove={(i) => {
-                const next = keywords.filter((_, j) => j !== i);
-                setKeywords(next);
-                saveSettings({ keywords: next });
+              onRemove={(idx) => {
+                const next = keywordGroups.map((g, i) =>
+                  i === activeGroupIdx
+                    ? { ...g, keywords: g.keywords.filter((_, j) => j !== idx) }
+                    : g
+                );
+                setKeywordGroups(next);
+                saveSettings({ keywordGroups: next });
               }}
               placeholder="e.g. b2b saas…"
             />

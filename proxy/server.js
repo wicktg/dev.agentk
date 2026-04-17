@@ -1,0 +1,139 @@
+const express = require("express");
+const NodeCache = require("node-cache");
+
+const app  = express();
+const PORT = process.env.PORT || 3001;
+const API_KEY = process.env.PROXY_API_KEY; // set this on the VPS
+
+// ── Caches ────────────────────────────────────────────────────────────────────
+
+const subredditCache = new NodeCache({ stdTTL: 30 });   // 30s — subreddit posts
+const karmaCache     = new NodeCache({ stdTTL: 300 });  // 5 min — user karma
+const searchCache    = new NodeCache({ stdTTL: 60 });   // 60s — subreddit search
+
+// ── In-flight dedup ───────────────────────────────────────────────────────────
+
+/** @type {Map<string, Promise<{status:number, data:any|null}>>} */
+const inFlight = new Map();
+
+function dedupFetch(key, fetchFn) {
+  if (inFlight.has(key)) return inFlight.get(key);
+  const p = fetchFn().finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+// ── Reddit fetch with retry ───────────────────────────────────────────────────
+
+async function fetchReddit(url) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "agentk/1.0 (vps-proxy)" },
+        signal: AbortSignal.timeout(12_000),
+      });
+
+      if (res.status === 429) {
+        console.warn(`[proxy] 429 rate-limited: ${url}`);
+        return { status: 429, data: null };
+      }
+      if (res.status >= 500 && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      if (!res.ok) {
+        console.warn(`[proxy] HTTP ${res.status}: ${url}`);
+        return { status: res.status, data: null };
+      }
+
+      const data = await res.json();
+      return { status: 200, data };
+    } catch (err) {
+      if (attempt < 2) continue;
+      console.error(`[proxy] fetch error: ${url}`, err.message);
+      return { status: 0, data: null };
+    }
+  }
+  return { status: 0, data: null };
+}
+
+// ── Auth middleware ───────────────────────────────────────────────────────────
+
+function requireApiKey(req, res, next) {
+  if (!API_KEY) return next(); // no key configured → open (dev mode)
+  if (req.headers["x-api-key"] !== API_KEY) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+}
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+
+app.get("/health", (_req, res) => res.json({ ok: true, pid: process.pid }));
+
+// Subreddit new posts — /r/:sub/new
+app.get("/r/:sub/new", requireApiKey, async (req, res) => {
+  const sub = req.params.sub.toLowerCase();
+  const cacheKey = `sub:${sub}`;
+
+  const hit = subredditCache.get(cacheKey);
+  if (hit !== undefined) return res.json(hit);
+
+  const { status, data } = await dedupFetch(cacheKey, () =>
+    fetchReddit(`https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`)
+  );
+
+  if (data) {
+    subredditCache.set(cacheKey, data);
+    return res.json(data);
+  }
+  return res.status(status || 502).json({ error: "Reddit fetch failed" });
+});
+
+// User karma — /user/:author/about
+app.get("/user/:author/about", requireApiKey, async (req, res) => {
+  const author   = req.params.author;
+  const cacheKey = `karma:${author.toLowerCase()}`;
+
+  const hit = karmaCache.get(cacheKey);
+  if (hit !== undefined) return res.json(hit);
+
+  const { status, data } = await dedupFetch(cacheKey, () =>
+    fetchReddit(`https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`)
+  );
+
+  if (data) {
+    karmaCache.set(cacheKey, data);
+    return res.json(data);
+  }
+  return res.status(status || 502).json({ error: "Reddit fetch failed" });
+});
+
+// Subreddit autocomplete — /search/subreddits?query=...
+app.get("/search/subreddits", requireApiKey, async (req, res) => {
+  const query = (req.query.query || "").trim();
+  if (!query) return res.json({ data: { children: [] } });
+
+  const cacheKey = `search:${query.toLowerCase()}`;
+
+  const hit = searchCache.get(cacheKey);
+  if (hit !== undefined) return res.json(hit);
+
+  const { status, data } = await dedupFetch(cacheKey, () =>
+    fetchReddit(
+      `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(query)}&limit=6&include_over_18=false&include_profiles=false`
+    )
+  );
+
+  if (data) {
+    searchCache.set(cacheKey, data);
+    return res.json(data);
+  }
+  return res.status(status || 502).json({ error: "Reddit fetch failed" });
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+
+app.listen(PORT, () => {
+  console.log(`[proxy] pid=${process.pid} listening on :${PORT}`);
+});

@@ -48,7 +48,7 @@ export const deleteAccount = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    // Notify Telegram before deleting the token binding
+    // Notify Telegram/Discord before deleting the token binding
     const agentToken = await ctx.db
       .query("agentTokens")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -56,6 +56,11 @@ export const deleteAccount = mutation({
     if (agentToken?.telegramChatId) {
       await ctx.scheduler.runAfter(0, internal.telegram.notifyAccountDeleted, {
         chatId: agentToken.telegramChatId,
+      });
+    }
+    if (agentToken?.discordChannelId) {
+      await ctx.scheduler.runAfter(0, internal.discord.notifyDiscordAccountDeleted, {
+        discordChannelId: agentToken.discordChannelId,
       });
     }
 

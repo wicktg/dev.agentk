@@ -22,7 +22,7 @@ export const registerDevice = mutation({
     const conflict = othersOnIp.length >= 3 ? othersOnIp[0] : null;
 
     if (conflict) {
-      // Notify Telegram if the new account had a bot session
+      // Notify Telegram/Discord if the new account had a bot session
       const agentToken = await ctx.db
         .query("agentTokens")
         .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -30,6 +30,11 @@ export const registerDevice = mutation({
       if (agentToken?.telegramChatId) {
         await ctx.scheduler.runAfter(0, internal.telegram.notifyAccountDeleted, {
           chatId: agentToken.telegramChatId,
+        });
+      }
+      if (agentToken?.discordChannelId) {
+        await ctx.scheduler.runAfter(0, internal.discord.notifyDiscordAccountDeleted, {
+          discordChannelId: agentToken.discordChannelId,
         });
       }
 

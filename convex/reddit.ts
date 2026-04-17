@@ -301,12 +301,10 @@ export const globalFetch = internalAction({
         posts: userPosts,
       });
 
-      // 7. Send Telegram alerts for new posts
+      // 7. Send alerts for new posts
       if (newPostIds.length > 0) {
-        await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, {
-          userId,
-          postIds: newPostIds,
-        });
+        await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, { userId, postIds: newPostIds });
+        await ctx.scheduler.runAfter(0, internal.discord.sendDiscordAlerts, { userId, postIds: newPostIds });
       }
     }
   },
@@ -425,6 +423,7 @@ export const doFetch = internalAction({
 
     if (newPostIds.length > 0) {
       await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, { userId, postIds: newPostIds });
+      await ctx.scheduler.runAfter(0, internal.discord.sendDiscordAlerts, { userId, postIds: newPostIds });
     }
   },
 });

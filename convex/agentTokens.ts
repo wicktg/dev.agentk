@@ -21,7 +21,13 @@ export const generateToken = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { token, telegramChatId: undefined });
+      await ctx.db.patch(existing._id, {
+        token,
+        telegramChatId: undefined,
+        discordUserId: undefined,
+        discordChannelId: undefined,
+        discordUsername: undefined,
+      });
     } else {
       await ctx.db.insert("agentTokens", { userId, token });
     }
@@ -85,6 +91,30 @@ export const bindChatId = internalMutation({
   },
   handler: async (ctx, { tokenId, telegramChatId, telegramUsername }) => {
     await ctx.db.patch(tokenId, { telegramChatId, telegramUsername });
+  },
+});
+
+// Internal: find a token row by discordUserId.
+export const getByDiscordUser = internalQuery({
+  args: { discordUserId: v.string() },
+  handler: async (ctx, { discordUserId }) => {
+    return await ctx.db
+      .query("agentTokens")
+      .withIndex("by_discord", (q) => q.eq("discordUserId", discordUserId))
+      .unique();
+  },
+});
+
+// Internal: bind Discord user info to a token row.
+export const bindDiscordUser = internalMutation({
+  args: {
+    tokenId:          v.id("agentTokens"),
+    discordUserId:    v.string(),
+    discordChannelId: v.string(),
+    discordUsername:  v.optional(v.string()),
+  },
+  handler: async (ctx, { tokenId, discordUserId, discordChannelId, discordUsername }) => {
+    await ctx.db.patch(tokenId, { discordUserId, discordChannelId, discordUsername });
   },
 });
 

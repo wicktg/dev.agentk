@@ -83,14 +83,18 @@ export default defineSchema({
     .index("by_dodo_payment", ["dodoPaymentId"]),
 
   agentTokens: defineTable({
-    userId:           v.id("users"),
-    token:            v.string(),
-    telegramChatId:   v.optional(v.string()),
-    telegramUsername: v.optional(v.string()),
+    userId:            v.id("users"),
+    token:             v.string(),
+    telegramChatId:    v.optional(v.string()),
+    telegramUsername:  v.optional(v.string()),
+    discordUserId:     v.optional(v.string()),
+    discordChannelId:  v.optional(v.string()),
+    discordUsername:   v.optional(v.string()),
   })
-    .index("by_user",   ["userId"])
-    .index("by_token",  ["token"])
-    .index("by_chat",   ["telegramChatId"]),
+    .index("by_user",    ["userId"])
+    .index("by_token",   ["token"])
+    .index("by_chat",    ["telegramChatId"])
+    .index("by_discord", ["discordUserId"]),
 
   userDevices: defineTable({
     userId:       v.id("users"),

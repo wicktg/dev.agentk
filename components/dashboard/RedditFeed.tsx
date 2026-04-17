@@ -1010,7 +1010,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
             <TagBox
               pills={keywords}
               onAdd={(v) => {
-                if (!keywords.includes(v)) {
+                if (!keywords.includes(v) && keywords.length < 15) {
                   const next = [...keywords, v];
                   setKeywords(next);
                   saveSettings({ keywords: next });
@@ -1031,7 +1031,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
                 display: "block",
               }}
             >
-              {keywords.length} · Press Enter to add
+              {keywords.length}/15 · Press Enter to add
             </span>
           </div>
           <div>
@@ -1078,7 +1078,8 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
               const clean = v.trim().replace(/^r\//i, "");
               if (
                 clean &&
-                !subreddits.includes(clean)
+                !subreddits.includes(clean) &&
+                subreddits.length < 5
               ) {
                 const next = [...subreddits, clean];
                 setSubreddits(next);
@@ -1107,6 +1108,9 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
               />
             ))}
           </div>
+          <span style={{ fontSize: "9px", color: "#B2A28C", marginTop: "6px", display: "block" }}>
+            {subreddits.length}/5 · Max 5 subreddits
+          </span>
         </FeedModal>
       )}
 

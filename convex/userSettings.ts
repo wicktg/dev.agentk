@@ -26,6 +26,9 @@ export const upsertUserSettings = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    if (args.keywords.length > 15) throw new Error("Maximum 15 keywords allowed.");
+    if (args.subreddits.length > 5) throw new Error("Maximum 5 subreddits allowed.");
+
     const existing = await ctx.db
       .query("userSettings")
       .withIndex("by_user", (q) => q.eq("userId", userId))

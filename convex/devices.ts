@@ -12,13 +12,16 @@ export const registerDevice = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    // Check if this IP is already registered to a different account
-    const conflict = await ctx.db
+    // Check if this IP already has 3 or more different accounts
+    const existing_for_ip = await ctx.db
       .query("userDevices")
       .withIndex("by_ip", (q) => q.eq("ip", ip))
-      .first();
+      .collect();
 
-    if (conflict && conflict.userId !== userId) {
+    const othersOnIp = existing_for_ip.filter((d) => d.userId !== userId);
+    const conflict = othersOnIp.length >= 3 ? othersOnIp[0] : null;
+
+    if (conflict) {
       // Notify Telegram if the new account had a bot session
       const agentToken = await ctx.db
         .query("agentTokens")

@@ -12,6 +12,7 @@ import type * as agentTokens from "../agentTokens.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
 import type * as crons from "../crons.js";
+import type * as devices from "../devices.js";
 import type * as http from "../http.js";
 import type * as reddit from "../reddit.js";
 import type * as telegram from "../telegram.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   billing: typeof billing;
   crons: typeof crons;
+  devices: typeof devices;
   http: typeof http;
   reddit: typeof reddit;
   telegram: typeof telegram;

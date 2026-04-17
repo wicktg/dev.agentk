@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useConvexAuth } from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import Sidebar, { type ActiveTab } from "@/components/dashboard/Sidebar";
@@ -15,8 +16,10 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const posts        = useQuery(api.reddit.getResults);
-  const triggerFetch = useMutation(api.reddit.triggerFetch);
+  const { signOut }   = useAuthActions();
+  const posts         = useQuery(api.reddit.getResults);
+  const triggerFetch  = useMutation(api.reddit.triggerFetch);
+  const registerDevice = useMutation(api.devices.registerDevice);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -24,6 +27,18 @@ export default function DashboardPage() {
     }
     if (!authLoading && isAuthenticated) {
       triggerFetch({}).catch(console.error);
+
+      // Device registration + IP dedup check
+      fetch("/api/device-ip")
+        .then((r) => r.json())
+        .then(({ ip }: { ip: string }) =>
+          registerDevice({ ip, userAgent: navigator.userAgent })
+        )
+        .catch((err: any) => {
+          if (err?.message?.includes("DEVICE_CONFLICT")) {
+            signOut().then(() => router.replace("/?blocked=1"));
+          }
+        });
     }
   }, [authLoading, isAuthenticated, router]);
 

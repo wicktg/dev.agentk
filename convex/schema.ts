@@ -91,6 +91,16 @@ export default defineSchema({
     .index("by_token",  ["token"])
     .index("by_chat",   ["telegramChatId"]),
 
+  userDevices: defineTable({
+    userId:       v.id("users"),
+    ip:           v.string(),
+    userAgent:    v.string(),
+    registeredAt: v.number(),
+    lastSeenAt:   v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_ip",   ["ip"]),
+
   alertedPosts: defineTable({
     userId:    v.id("users"),
     postId:    v.string(),

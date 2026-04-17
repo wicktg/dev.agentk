@@ -96,12 +96,9 @@ function modal(customId: string, title: string, components: object[]) {
 // ── Webhook ───────────────────────────────────────────────────────────────────
 
 export const discordWebhook = httpAction(async (ctx, request) => {
-  const botToken = process.env.DISCORD_BOT_TOKEN;
-  const appId    = process.env.DISCORD_APPLICATION_ID;
-  const pubKey   = process.env.DISCORD_PUBLIC_KEY;
-
-  if (!botToken || !appId || !pubKey) {
-    console.error("[Discord] Missing env vars");
+  const pubKey = process.env.DISCORD_PUBLIC_KEY;
+  if (!pubKey) {
+    console.error("[Discord] DISCORD_PUBLIC_KEY not set");
     return new Response("Not configured", { status: 500 });
   }
 
@@ -115,11 +112,18 @@ export const discordWebhook = httpAction(async (ctx, request) => {
 
   const body = JSON.parse(bodyText);
 
-  // PING
+  // PING — Discord sends this to verify the endpoint
   if (body.type === 1) {
     return new Response(JSON.stringify({ type: 1 }), {
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  const appId    = process.env.DISCORD_APPLICATION_ID;
+  if (!botToken || !appId) {
+    console.error("[Discord] DISCORD_BOT_TOKEN or DISCORD_APPLICATION_ID not set");
+    return interaction("Bot is not fully configured yet.", true);
   }
 
   // Slash command

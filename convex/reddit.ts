@@ -200,50 +200,113 @@ export const searchSubreddits = action({
   },
 });
 
-// ── setFetchLoopId — called by doFetchLoop to persist next scheduled ID ──────
+// ── getAllActiveSettings — users with ≥1 keyword AND ≥1 subreddit ─────────────
 
-export const setFetchLoopId = internalMutation({
-  args: { userId: v.id("users"), fetchLoopId: v.optional(v.id("_scheduled_functions")) },
-  handler: async (ctx, { userId, fetchLoopId }) => {
-    const settings = await ctx.db
-      .query("userSettings")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .unique();
-    if (settings) await ctx.db.patch(settings._id, { fetchLoopId });
+export const getAllActiveSettings = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("userSettings").collect();
+    return all.filter((s) => s.keywords.length > 0 && s.subreddits.length > 0);
   },
 });
 
-// ── doFetchLoop — self-rescheduling per-user 3-minute cycle ───────────────────
+// ── globalFetch — shared 3-min cron: 1 fetch per subreddit, fan-out to users ─
 
-export const doFetchLoop = internalAction({
-  args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
-    const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
+export const globalFetch = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    // 1. All users with active settings
+    const allSettings = await ctx.runQuery(internal.reddit.getAllActiveSettings);
+    if (allSettings.length === 0) return;
 
-    // Stop if no settings, no keywords, or no subreddits
-    if (!settings || settings.keywords.length === 0 || settings.subreddits.length === 0) {
-      await ctx.runMutation(internal.reddit.setFetchLoopId, { userId, fetchLoopId: undefined });
-      return;
+    // 2. Unique subreddits across all users
+    const uniqueSubs = [
+      ...new Set(allSettings.flatMap((s) => s.subreddits.map((r) => r.toLowerCase()))),
+    ];
+
+    // 3. Fetch each subreddit once with 2s delay between requests
+    const postsBySub = new Map<string, any[]>();
+    for (const sub of uniqueSubs) {
+      const json = await fetchJSON(
+        `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`
+      );
+      if (json) {
+        postsBySub.set(sub, json.data?.children?.map((c: any) => c.data) ?? []);
+      }
+      await new Promise((r) => setTimeout(r, 2000));
     }
 
-    // Random 0–5s stagger to spread Reddit requests across users
-    const jitterMs = Math.floor(Math.random() * 5000);
-    await new Promise((r) => setTimeout(r, jitterMs));
+    // 4. Global post filter: last 6h, not deleted/removed, title >50 chars, score ≥1
+    const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
+    const filteredPosts: any[] = [];
+    const seenIds = new Set<string>();
 
-    // Run the fetch for this user
-    await ctx.runAction(internal.reddit.doFetch, { userId });
+    for (const posts of postsBySub.values()) {
+      for (const p of posts) {
+        if (!p?.id || seenIds.has(p.id)) continue;
+        if ((p.created_utc ?? 0) < cutoffSec) continue;
+        if (!p.title || p.title.length <= 50) continue;
+        if ((p.score ?? p.ups ?? 0) < 1) continue;
+        const selftext = (p.selftext ?? "").toLowerCase().trim();
+        if (selftext === "[deleted]" || selftext === "[removed]") continue;
+        seenIds.add(p.id);
+        filteredPosts.push(p);
+      }
+    }
 
-    // Reschedule self in 3 minutes and persist the new job ID
-    const nextId = await ctx.scheduler.runAfter(
-      3 * 60 * 1000,
-      internal.reddit.doFetchLoop,
-      { userId }
-    );
-    await ctx.runMutation(internal.reddit.setFetchLoopId, { userId, fetchLoopId: nextId });
+    if (filteredPosts.length === 0) return;
+
+    // 5. Fan-out: match posts to each user's keywords + subreddits
+    for (const settings of allSettings) {
+      const { userId, keywords, subreddits, excluded, minUpvotes, minComments } = settings;
+      const allowedSubs   = new Set(subreddits.map((s) => s.toLowerCase()));
+      const keywordsLower = keywords.map((k) => k.toLowerCase());
+      const excludedLower = excluded.map((e) => e.toLowerCase());
+
+      const userPosts = filteredPosts
+        .filter((p) => {
+          if (!allowedSubs.has((p.subreddit ?? "").toLowerCase())) return false;
+          const title = (p.title ?? "").toLowerCase();
+          if (!keywordsLower.some((k) => title.includes(k))) return false;
+          if ((p.ups ?? 0) < minUpvotes) return false;
+          if ((p.num_comments ?? 0) < minComments) return false;
+          const text = `${p.title ?? ""} ${p.selftext ?? ""}`.toLowerCase();
+          if (excludedLower.some((e) => text.includes(e))) return false;
+          return true;
+        })
+        .map((p) => ({
+          postId:      String(p.id),
+          type:        p.is_self ? "self" : "link",
+          title:       p.title ?? undefined,
+          body:        p.selftext ?? "",
+          author:      p.author ?? "",
+          subreddit:   p.subreddit ?? "",
+          url:         `https://www.reddit.com${p.permalink}`,
+          ups:         p.ups ?? 0,
+          numComments: p.num_comments ?? 0,
+          createdUtc:  p.created_utc ?? 0,
+        }));
+
+      if (userPosts.length === 0) continue;
+
+      // 6. Upsert into redditResults; get only newly inserted postIds
+      const newPostIds = await ctx.runMutation(internal.reddit.upsertResults, {
+        userId,
+        posts: userPosts,
+      });
+
+      // 7. Send Telegram alerts for new posts
+      if (newPostIds.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, {
+          userId,
+          postIds: newPostIds,
+        });
+      }
+    }
   },
 });
 
-// ── triggerFetch — auth entry point ──────────────────────────────────────────
+// ── triggerFetch — manual reload from dashboard ───────────────────────────────
 
 export const triggerFetch = mutation({
   args: {},

@@ -9,4 +9,10 @@ crons.interval(
   internal.reddit.deleteExpiredResults
 );
 
+crons.interval(
+  "global-reddit-fetch",
+  { minutes: 3 },
+  internal.reddit.globalFetch
+);
+
 export default crons;

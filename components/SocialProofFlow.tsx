@@ -270,10 +270,26 @@ function SubredditsPanel() {
 /* Left side = Keywords, Right side = Subreddits                     */
 /* Drag handle left → subreddits; drag handle right → keywords       */
 
-function SettingsSlider() {
-  const [split, setSplit] = useState(62);
+function SettingsSlider({ visible }: { visible: boolean }) {
+  const [split, setSplit] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const animated = useRef(false);
+
+  useEffect(() => {
+    if (!visible || animated.current) return;
+    animated.current = true;
+    const from = 50, to = 62, duration = 1400;
+    const start = performance.now();
+    function step(now: number) {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = t < 1 ? 1 - Math.pow(1 - t, 4) : 1;
+      setSplit(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(step);
+    }
+    const id = setTimeout(() => requestAnimationFrame(step), 300);
+    return () => clearTimeout(id);
+  }, [visible]);
 
   const onMove = useCallback((e: PointerEvent) => {
     if (!dragging.current || !containerRef.current) return;
@@ -332,6 +348,7 @@ function SettingsSlider() {
           alignItems: "center",
           justifyContent: "center",
           clipPath: `inset(0 ${100 - split}% 0 0)`,
+          transition: dragging.current ? "none" : "clip-path 0.05s linear",
         }}
       >
         <KeywordsPanel />
@@ -348,6 +365,7 @@ function SettingsSlider() {
           width: 1,
           background: "rgba(0,0,0,0.18)",
           pointerEvents: "none",
+          transition: dragging.current ? "none" : "left 0.05s linear",
         }}
       >
         {/* Handle */}
@@ -431,12 +449,16 @@ function PostCard({
   topPx,
   rotDeg,
   zIndex,
+  visible,
+  delay,
 }: {
   post: (typeof MOCK_POSTS)[0];
   left: string;
   topPx: number;
   rotDeg: number;
   zIndex: number;
+  visible: boolean;
+  delay: number;
 }) {
   const color = getSubredditColor(post.subreddit);
   return (
@@ -453,7 +475,9 @@ function PostCard({
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        transform: `rotate(${rotDeg}deg)`,
+        opacity: visible ? 1 : 0,
+        transform: visible ? `rotate(${rotDeg}deg) translateY(0px) scale(1)` : `rotate(${rotDeg}deg) translateY(36px) scale(0.97)`,
+        transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
       }}
     >
       {/* Fire icon top-right */}
@@ -620,7 +644,7 @@ function PostCard({
   );
 }
 
-function FeedMockup() {
+function FeedMockup({ visible }: { visible: boolean }) {
   return (
     <div
       style={{
@@ -643,6 +667,8 @@ function FeedMockup() {
             topPx={topPx}
             rotDeg={rotDeg}
             zIndex={zIndex}
+            visible={visible}
+            delay={i * 120}
           />
         );
       })}
@@ -909,18 +935,30 @@ function TelegramMockup({ visible }: { visible: boolean }) {
 /* ── Main Section ────────────────────────────────────────────────── */
 
 export default function SocialProofFlow() {
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const [step1Visible, setStep1Visible] = useState(false);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const [step2Visible, setStep2Visible] = useState(false);
   const tgRef = useRef<HTMLDivElement>(null);
   const [tgVisible, setTgVisible] = useState(false);
 
   useEffect(() => {
-    const el = tgRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setTgVisible(true); },
-      { threshold: 0.5 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    const items = [
+      { ref: step1Ref, set: setStep1Visible, threshold: 0.35 },
+      { ref: step2Ref, set: setStep2Visible, threshold: 0.2  },
+      { ref: tgRef,    set: setTgVisible,    threshold: 0.5  },
+    ];
+    const observers = items.map(({ ref, set, threshold }) => {
+      const el = ref.current;
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) set(true); },
+        { threshold }
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => observers.forEach(o => o?.disconnect());
   }, []);
 
   return (
@@ -939,7 +977,7 @@ export default function SocialProofFlow() {
       </div>
 
       {/* ── Step 1 ── */}
-      <div className="flex flex-col md:flex-row items-center gap-14 md:gap-20">
+      <div className="flex flex-col md:flex-row items-center gap-14 md:gap-20" ref={step1Ref}>
         <div className="w-full md:w-[38%] text-left space-y-4">
           <p className="text-2xl font-bold text-on-surface leading-snug tracking-tight">
             Set your keywords and subreddits once.
@@ -949,12 +987,12 @@ export default function SocialProofFlow() {
           </p>
         </div>
         <div className="w-full md:w-[62%]">
-          <SettingsSlider />
+          <SettingsSlider visible={step1Visible} />
         </div>
       </div>
 
       {/* ── Step 2 ── */}
-      <div className="flex flex-col md:flex-row-reverse items-center gap-14 md:gap-20">
+      <div className="flex flex-col md:flex-row-reverse items-center gap-14 md:gap-20" ref={step2Ref}>
         <div className="w-full md:w-[38%] space-y-4">
           <p className="text-2xl font-bold text-on-surface leading-snug tracking-tight">
             Matching posts surface in your feed.
@@ -964,7 +1002,7 @@ export default function SocialProofFlow() {
           </p>
         </div>
         <div className="w-full md:w-[62%]">
-          <FeedMockup />
+          <FeedMockup visible={step2Visible} />
         </div>
       </div>
 

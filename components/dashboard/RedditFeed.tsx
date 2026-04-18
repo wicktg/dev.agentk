@@ -819,7 +819,15 @@ export default function RedditFeed({ posts, loading }: Props) {
       }}
     >
       {/* Spin keyframes injected inline */}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes logo-spin {
+          0%   { transform: rotate(0deg);   animation-timing-function: linear; }
+          65%  { transform: rotate(270deg); animation-timing-function: ease-out; }
+          82%  { transform: rotate(360deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
 
       {/* Canvas */}
       <div
@@ -870,7 +878,7 @@ export default function RedditFeed({ posts, loading }: Props) {
               src={logo}
               alt="AgentK"
               height={36}
-              style={{ animation: "spin 3s linear infinite", marginBottom: "22px" }}
+              style={{ animation: "logo-spin 2.8s linear infinite", marginBottom: "22px" }}
             />
             <p style={{ fontSize: "14px", fontWeight: 600, color: "#191918", margin: 0 }}>
               Posts are on their way

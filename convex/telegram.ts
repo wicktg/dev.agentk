@@ -94,6 +94,15 @@ async function setBotCommands(botToken: string) {
   });
 }
 
+export const setupCommands = internalAction({
+  args: {},
+  handler: async () => {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN not set");
+    await setBotCommands(botToken);
+  },
+});
+
 // ── Webhook — full command handling ──────────────────────────────────────────
 
 export const telegramWebhook = httpAction(async (ctx, request) => {
@@ -118,9 +127,6 @@ export const telegramWebhook = httpAction(async (ctx, request) => {
   const tgUsername  = message.from?.username as string | undefined;
 
   if (!chatId || !text) return new Response("ok", { status: 200 });
-
-  // Register commands menu (idempotent — Telegram caches this)
-  await setBotCommands(botToken);
 
   // Resolve command base (strip @BotName suffix if present)
   const rawCmd = text.split("@")[0].toLowerCase();

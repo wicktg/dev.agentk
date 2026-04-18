@@ -96,6 +96,16 @@ function modal(customId: string, title: string, components: object[]) {
   );
 }
 
+export const setupCommands = internalAction({
+  args: {},
+  handler: async () => {
+    const token = process.env.DISCORD_BOT_TOKEN;
+    const appId = process.env.DISCORD_APPLICATION_ID;
+    if (!token || !appId) throw new Error("DISCORD_BOT_TOKEN or DISCORD_APPLICATION_ID not set");
+    await registerCommands(token, appId);
+  },
+});
+
 // ── Webhook ───────────────────────────────────────────────────────────────────
 
 export const discordWebhook = httpAction(async (ctx, request) => {
@@ -131,8 +141,6 @@ export const discordWebhook = httpAction(async (ctx, request) => {
 
   // Slash command
   if (body.type === 2) {
-    await registerCommands(botToken, appId);
-
     const cmd      = body.data?.name as string;
     const userId   = (body.member?.user ?? body.user)?.id  as string;
     const username = (body.member?.user ?? body.user)?.username as string | undefined;

@@ -265,8 +265,20 @@ export const sendDiscordAlerts = internalAction({
       // Fetch karma (best-effort)
       let karmaStr = "—";
       try {
-        const k = await ctx.runAction(internal.reddit.fetchKarma, { author: post.author });
-        if (k !== null) karmaStr = k >= 1000 ? (k / 1000).toFixed(1) + "k" : String(k);
+        const proxyBase = process.env.REDDIT_PROXY_URL?.replace(/\/$/, "");
+        const proxyKey  = process.env.REDDIT_PROXY_SECRET;
+        const endpoint  = proxyBase
+          ? `${proxyBase}/user/${encodeURIComponent(post.author)}/about`
+          : `https://www.reddit.com/user/${encodeURIComponent(post.author)}/about.json`;
+        const headers: Record<string, string> = proxyBase && proxyKey
+          ? { "X-Api-Key": proxyKey }
+          : { "User-Agent": "agentk/1.0 (discord-alerts)" };
+        const res = await fetch(endpoint, { headers });
+        if (res.ok) {
+          const json = await res.json();
+          const k = (json?.data?.link_karma ?? 0) + (json?.data?.comment_karma ?? 0);
+          karmaStr = k >= 1000 ? (k / 1000).toFixed(1) + "k" : String(k);
+        }
       } catch { /* fallback */ }
 
       const embed = {

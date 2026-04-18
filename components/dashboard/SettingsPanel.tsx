@@ -57,7 +57,7 @@ export default function SettingsPanel({ open }: Props) {
 <b>/email</b> — view your email &amp; auth status<br>
 <b>/account</b> — view or update your display name<br>
 <b>/token</b> — your Telegram &amp; Discord alert token<br>
-<b>/cap N</b> — max posts alerted per hour on Telegram &amp; Discord (e.g. /cap 5)<br>
+<b>/cap</b> — max posts alerted per hour on Telegram &amp; Discord (e.g. /cap 5)<br>
 <b>/delete</b> — delete your account`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, booted, user]);
@@ -157,7 +157,7 @@ export default function SettingsPanel({ open }: Props) {
         });
 
       } else {
-        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap N</b>, or <b>/delete</b>.`);
+        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap</b>, or <b>/delete</b>.`);
       }
     }, 250);
   }
@@ -212,6 +212,7 @@ export default function SettingsPanel({ open }: Props) {
                 ["/email",   "Email & auth status"],
                 ["/account", "View or rename"],
                 ["/token",   "Your alert token"],
+                ["/cap",     "Alert cap per hour"],
                 ["/delete",  "Delete account"],
               ].map(([cmd, desc]) => (
                 <button key={cmd} onClick={() => { setMenuOpen(false); setInput(""); dispatch(cmd); }}

@@ -1316,36 +1316,23 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
       {/* Metrics modal */}
       {activeModal === "metrics" && (
         <FeedModal title="Reddit Metrics" onClose={() => setActiveModal(null)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "4px 0" }}>
-            <div style={{ display: "flex", justifyContent: "space-around" }}>
-              <Stepper
-                value={minUpvotes}
-                label="Min Upvotes"
-                onChange={(v) => {
-                  setMinUpvotes(v);
-                  saveSettings({ minUpvotes: v });
-                }}
-              />
-              <Stepper
-                value={minComments}
-                label="Min Comments"
-                onChange={(v) => {
-                  setMinComments(v);
-                  saveSettings({ minComments: v });
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <Stepper
-                value={minKarma}
-                label="Min Karma"
-                step={100}
-                onChange={(v) => {
-                  setMinKarma(v);
-                  saveSettings({ minKarma: v });
-                }}
-              />
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", padding: "4px 0" }}>
+            <Stepper
+              value={minUpvotes}
+              label="Min Upvotes"
+              onChange={(v) => { setMinUpvotes(v); saveSettings({ minUpvotes: v }); }}
+            />
+            <Stepper
+              value={minComments}
+              label="Min Comments"
+              onChange={(v) => { setMinComments(v); saveSettings({ minComments: v }); }}
+            />
+            <Stepper
+              value={minKarma}
+              label="Min Karma"
+              step={100}
+              onChange={(v) => { setMinKarma(v); saveSettings({ minKarma: v }); }}
+            />
           </div>
         </FeedModal>
       )}

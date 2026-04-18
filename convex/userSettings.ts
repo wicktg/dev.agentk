@@ -21,7 +21,8 @@ export const upsertUserSettings = mutation({
     subreddits:    v.array(v.string()),
     minUpvotes:    v.number(),
     minComments:   v.number(),
-    keywordGroups: v.optional(v.array(v.object({ name: v.string(), keywords: v.array(v.string()) }))),
+    keywordGroups:  v.optional(v.array(v.object({ name: v.string(), keywords: v.array(v.string()) }))),
+    activeGroupIdx: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

@@ -54,7 +54,7 @@ export default function SettingsPanel({ open }: Props) {
     addBot(`Hi <strong>${name}</strong>! I'm your agentK assistant.<br><br>
 <b>/email</b> — view your email &amp; auth status<br>
 <b>/account</b> — view or update your display name<br>
-<b>/token</b> — your Telegram alert token<br>
+<b>/token</b> — your Telegram &amp; Discord alert token<br>
 <b>/delete</b> — delete your account`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, booted, user]);

@@ -540,8 +540,8 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
   const [subInput, setSubInput] = useState("");
   const [loaded, setLoaded] = useState(false);
 
-  // Derived flat keywords (union of all groups, deduped)
-  const keywords = Array.from(new Set(keywordGroups.flatMap((g) => g.keywords)));
+  // Keywords from the currently active group only
+  const keywords = keywordGroups[activeGroupIdx]?.keywords ?? [];
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -575,6 +575,9 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
     } else if (settings.keywords.length > 0) {
       setKeywordGroups([{ name: "General", keywords: settings.keywords }]);
     }
+    if (settings.activeGroupIdx !== undefined) {
+      setActiveGroupIdx(settings.activeGroupIdx);
+    }
     setExcluded(settings.excluded);
     setSubreddits(settings.subreddits);
     setMinUpvotes(settings.minUpvotes);
@@ -584,16 +587,19 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
 
   async function saveSettings(patch: {
     keywordGroups?: KeywordGroup[];
+    activeGroupIdx?: number;
     excluded?: string[];
     subreddits?: string[];
     minUpvotes?: number;
     minComments?: number;
   }) {
     if (!isAuthenticated) return;
-    const groups = patch.keywordGroups ?? keywordGroups;
+    const groups  = patch.keywordGroups ?? keywordGroups;
+    const groupIdx = patch.activeGroupIdx ?? activeGroupIdx;
     const merged = {
-      keywords: Array.from(new Set(groups.flatMap((g) => g.keywords))),
+      keywords: groups[groupIdx]?.keywords ?? [],
       keywordGroups: groups,
+      activeGroupIdx: groupIdx,
       excluded: patch.excluded ?? excluded,
       subreddits: patch.subreddits ?? subreddits,
       minUpvotes: patch.minUpvotes ?? minUpvotes,
@@ -1093,7 +1099,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
                       cursor: "pointer",
                       userSelect: "none",
                     }}
-                    onClick={() => setActiveGroupIdx(i)}
+                    onClick={() => { setActiveGroupIdx(i); saveSettings({ activeGroupIdx: i }); }}
                     onDoubleClick={() => {
                       setEditingGroupIdx(i);
                       setEditingGroupName(g.name);
@@ -1113,7 +1119,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
                                 : activeGroupIdx;
                           setKeywordGroups(next);
                           setActiveGroupIdx(newActive);
-                          saveSettings({ keywordGroups: next });
+                          saveSettings({ keywordGroups: next, activeGroupIdx: newActive });
                         }}
                         style={{
                           background: "none",

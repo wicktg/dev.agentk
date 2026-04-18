@@ -30,7 +30,8 @@ export default defineSchema({
     minUpvotes:    v.number(),
     minComments:   v.number(),
     lastFetchAt:   v.number(),
-    keywordGroups: v.optional(v.array(v.object({ name: v.string(), keywords: v.array(v.string()) }))),
+    keywordGroups:  v.optional(v.array(v.object({ name: v.string(), keywords: v.array(v.string()) }))),
+    activeGroupIdx: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // ── Billing ──────────────────────────────────────────────────

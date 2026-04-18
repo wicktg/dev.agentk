@@ -118,6 +118,13 @@ export const bindDiscordUser = internalMutation({
   },
 });
 
+export const setPaused = internalMutation({
+  args: { tokenId: v.id("agentTokens"), paused: v.boolean() },
+  handler: async (ctx, { tokenId, paused }) => {
+    await ctx.db.patch(tokenId, { paused });
+  },
+});
+
 // Internal: returns all rows that have a bound telegramChatId (for the cron).
 export const getConnectedUsers = internalQuery({
   args: {},

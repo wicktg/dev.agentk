@@ -64,6 +64,8 @@ async function registerCommands(token: string, appId: string) {
     { name: "start",   description: "Connect your Agentk account" },
     { name: "token",   description: "View your Agentk token" },
     { name: "account", description: "View your account info" },
+    { name: "pause",   description: "Pause Reddit alerts" },
+    { name: "resume",  description: "Resume Reddit alerts" },
   ]);
 }
 
@@ -173,6 +175,18 @@ export const discordWebhook = httpAction(async (ctx, request) => {
       ].filter(Boolean).join("\n");
       return interaction(`**Your Account**\n\n${lines}`, true);
     }
+
+    if (cmd === "pause") {
+      if (!authed) return interaction("⚠️ Not connected yet. Use `/start` to connect.", true);
+      await ctx.runMutation(internal.agentTokens.setPaused, { tokenId: authed._id, paused: true });
+      return interaction("⏸ Alerts paused. Use `/resume` to turn them back on.", true);
+    }
+
+    if (cmd === "resume") {
+      if (!authed) return interaction("⚠️ Not connected yet. Use `/start` to connect.", true);
+      await ctx.runMutation(internal.agentTokens.setPaused, { tokenId: authed._id, paused: false });
+      return interaction("▶️ Alerts resumed! You'll start receiving Reddit alerts again.", true);
+    }
   }
 
   // Modal submit
@@ -241,14 +255,26 @@ export const sendDiscordAlerts = internalAction({
 
     const agentToken = await ctx.runQuery(internal.agentTokens.getByUser, { userId });
     if (!agentToken?.discordChannelId) return;
+    if (agentToken.paused) return;
 
     const channelId = agentToken.discordChannelId;
     const settings  = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
     const keywords  = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
 
+    const ONE_HOUR_MS    = 60 * 60 * 1000;
     const THIRTY_MIN_SEC = 30 * 60;
+    const cap = settings?.alertsPerHour ?? 0;
+    let sentThisRun = 0;
+    if (cap > 0) {
+      const recentCount = await ctx.runQuery(internal.telegram.countRecentAlerts, {
+        userId, platform: "discord", since: Date.now() - ONE_HOUR_MS,
+      });
+      if (recentCount >= cap) return;
+      sentThisRun = recentCount;
+    }
 
     for (const postId of postIds) {
+      if (cap > 0 && sentThisRun >= cap) break;
       const alerted = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "discord" });
       if (alerted) continue;
 
@@ -299,6 +325,7 @@ export const sendDiscordAlerts = internalAction({
       const sent = await sendDmMessage(botToken, channelId, undefined, [embed]);
       if (sent) {
         await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "discord" });
+        sentThisRun++;
       }
     }
   },

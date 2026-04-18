@@ -32,6 +32,8 @@ export default defineSchema({
     lastFetchAt:   v.number(),
     keywordGroups:  v.optional(v.array(v.object({ name: v.string(), keywords: v.array(v.string()) }))),
     activeGroupIdx: v.optional(v.number()),
+    minKarma:       v.optional(v.number()),
+    alertsPerHour:  v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // ── Billing ──────────────────────────────────────────────────
@@ -91,6 +93,7 @@ export default defineSchema({
     discordUserId:     v.optional(v.string()),
     discordChannelId:  v.optional(v.string()),
     discordUsername:   v.optional(v.string()),
+    paused:            v.optional(v.boolean()),
   })
     .index("by_user",    ["userId"])
     .index("by_token",   ["token"])

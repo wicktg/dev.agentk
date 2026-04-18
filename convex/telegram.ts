@@ -24,6 +24,17 @@ export const markAlerted = internalMutation({
   },
 });
 
+export const countRecentAlerts = internalQuery({
+  args: { userId: v.id("users"), platform: v.string(), since: v.number() },
+  handler: async (ctx, { userId, platform, since }) => {
+    const rows = await ctx.db
+      .query("alertedPosts")
+      .withIndex("by_user_post", (q) => q.eq("userId", userId))
+      .collect();
+    return rows.filter((r) => r.platform === platform && r.alertedAt >= since).length;
+  },
+});
+
 // ── Telegram send helper ──────────────────────────────────────────────────────
 
 async function tgSend(
@@ -74,6 +85,8 @@ async function setBotCommands(botToken: string) {
         { command: "start",   description: "Connect your Agentk account" },
         { command: "token",   description: "View your Agentk token" },
         { command: "account", description: "View your account info" },
+        { command: "pause",   description: "Pause Reddit alerts" },
+        { command: "resume",  description: "Resume Reddit alerts" },
       ],
     }),
   });
@@ -158,10 +171,32 @@ export const telegramWebhook = httpAction(async (ctx, request) => {
     return new Response("ok", { status: 200 });
   }
 
+  // ── /pause ───────────────────────────────────────────────────────────────────
+  if (rawCmd === "/pause") {
+    if (!authed) {
+      await tgSend(botToken, chatId, "⚠️ You're not connected yet\\. Use /start to get started\\.");
+      return new Response("ok", { status: 200 });
+    }
+    await ctx.runMutation(internal.agentTokens.setPaused, { tokenId: authed._id, paused: true });
+    await tgSend(botToken, chatId, "⏸ Alerts paused\\. Use /resume to turn them back on\\.");
+    return new Response("ok", { status: 200 });
+  }
+
+  // ── /resume ──────────────────────────────────────────────────────────────────
+  if (rawCmd === "/resume") {
+    if (!authed) {
+      await tgSend(botToken, chatId, "⚠️ You're not connected yet\\. Use /start to get started\\.");
+      return new Response("ok", { status: 200 });
+    }
+    await ctx.runMutation(internal.agentTokens.setPaused, { tokenId: authed._id, paused: false });
+    await tgSend(botToken, chatId, "▶️ Alerts resumed\\! You'll start receiving Reddit alerts again\\.");
+    return new Response("ok", { status: 200 });
+  }
+
   // ── Unknown command ───────────────────────────────────────────────────────────
   if (text.startsWith("/")) {
     await tgSend(botToken, chatId,
-      "❌ Invalid command\\. Available: /start, /token, /account"
+      "❌ Invalid command\\. Available: /start, /token, /account, /pause, /resume"
     );
     return new Response("ok", { status: 200 });
   }
@@ -225,14 +260,26 @@ export const sendAlerts = internalAction({
 
     const agentToken = await ctx.runQuery(internal.agentTokens.getByUser, { userId });
     if (!agentToken?.telegramChatId) return;
+    if (agentToken.paused) return;
 
     const chatId   = agentToken.telegramChatId;
     const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
     const keywords  = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
 
+    const ONE_HOUR_MS    = 60 * 60 * 1000;
     const THIRTY_MIN_SEC = 30 * 60;
+    const cap = settings?.alertsPerHour ?? 0;
+    let sentThisRun = 0;
+    if (cap > 0) {
+      const recentCount = await ctx.runQuery(internal.telegram.countRecentAlerts, {
+        userId, platform: "telegram", since: Date.now() - ONE_HOUR_MS,
+      });
+      if (recentCount >= cap) return;
+      sentThisRun = recentCount;
+    }
 
     for (const postId of postIds) {
+      if (cap > 0 && sentThisRun >= cap) break;
       const alerted: boolean = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "telegram" });
       if (alerted) continue;
 
@@ -278,6 +325,7 @@ export const sendAlerts = internalAction({
       const sent = await tgSend(botToken, chatId, alertText, post.url);
       if (sent) {
         await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "telegram" });
+        sentThisRun++;
       }
     }
   },

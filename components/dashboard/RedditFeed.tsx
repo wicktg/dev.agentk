@@ -438,10 +438,12 @@ function Stepper({
   value,
   onChange,
   label,
+  step = 10,
 }: {
   value: number;
   onChange: (v: number) => void;
   label: string;
+  step?: number;
 }) {
   const fmt = (v: number) =>
     v === 0 ? "Any" : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v);
@@ -469,7 +471,7 @@ function Stepper({
         }}
       >
         <button
-          onClick={() => onChange(Math.max(0, value - 10))}
+          onClick={() => onChange(Math.max(0, value - step))}
           style={{
             width: "32px",
             height: "36px",
@@ -501,7 +503,7 @@ function Stepper({
           {fmt(value)}
         </span>
         <button
-          onClick={() => onChange(value + 10)}
+          onClick={() => onChange(value + step)}
           style={{
             width: "32px",
             height: "36px",
@@ -537,6 +539,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
   const [subreddits, setSubreddits] = useState<string[]>([]);
   const [minUpvotes, setMinUpvotes] = useState(0);
   const [minComments, setMinComments] = useState(0);
+  const [minKarma, setMinKarma] = useState(0);
   const [subInput, setSubInput] = useState("");
   const [loaded, setLoaded] = useState(false);
 
@@ -582,6 +585,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
     setSubreddits(settings.subreddits);
     setMinUpvotes(settings.minUpvotes);
     setMinComments(settings.minComments);
+    if (settings.minKarma !== undefined) setMinKarma(settings.minKarma);
     setLoaded(true);
   }
 
@@ -592,6 +596,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
     subreddits?: string[];
     minUpvotes?: number;
     minComments?: number;
+    minKarma?: number;
   }) {
     if (!isAuthenticated) return;
     const groups  = patch.keywordGroups ?? keywordGroups;
@@ -604,6 +609,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
       subreddits: patch.subreddits ?? subreddits,
       minUpvotes: patch.minUpvotes ?? minUpvotes,
       minComments: patch.minComments ?? minComments,
+      minKarma: patch.minKarma ?? minKarma,
     };
     await upsertSettings(merged);
   }
@@ -737,6 +743,16 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
         }
 
         inner.appendChild(card);
+      });
+
+      // Pre-warm karma cache for this batch so first hover shows instantly
+      batch.forEach((p) => {
+        if (!karmaCache.current.has(p.author)) {
+          fetch(`/api/reddit-user?u=${encodeURIComponent(p.author)}`)
+            .then((r) => r.json())
+            .then((json) => { karmaCache.current.set(p.author, formatCount(json.karma ?? 0) + " karma"); })
+            .catch(() => { karmaCache.current.set(p.author, "—"); });
+        }
       });
 
       offset.current += batch.length;
@@ -1319,6 +1335,15 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
               onChange={(v) => {
                 setMinComments(v);
                 saveSettings({ minComments: v });
+              }}
+            />
+            <Stepper
+              value={minKarma}
+              label="Min Karma"
+              step={100}
+              onChange={(v) => {
+                setMinKarma(v);
+                saveSettings({ minKarma: v });
               }}
             />
           </div>

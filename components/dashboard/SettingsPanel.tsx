@@ -23,6 +23,8 @@ export default function SettingsPanel({ open }: Props) {
   const tokenRow       = useQuery(api.agentTokens.getToken);
   const updateName     = useMutation(api.users.updateName);
   const deleteAccount  = useMutation(api.users.deleteAccount);
+  const setAlertCap    = useMutation(api.userSettings.setAlertCap);
+  const userSettings   = useQuery(api.userSettings.getUserSettings);
 
   const [msgs,     setMsgs]     = useState<Msg[]>([]);
   const [input,    setInput]    = useState("");
@@ -55,6 +57,7 @@ export default function SettingsPanel({ open }: Props) {
 <b>/email</b> — view your email &amp; auth status<br>
 <b>/account</b> — view or update your display name<br>
 <b>/token</b> — your Telegram &amp; Discord alert token<br>
+<b>/cap N</b> — limit alerts to N per hour (e.g. /cap 5)<br>
 <b>/delete</b> — delete your account`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, booted, user]);
@@ -118,6 +121,27 @@ export default function SettingsPanel({ open }: Props) {
           });
         }
 
+      } else if (cmd === "/cap") {
+        const current = userSettings?.alertsPerHour;
+        if (current && current > 0) {
+          addBot(`Current alert cap: <strong>${current} per hour</strong>.<br><br>To change: <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap N</span><br>To remove: <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap 0</span>`);
+        } else {
+          addBot(`No alert cap set. Use <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap N</span> to limit alerts per hour.`);
+        }
+
+      } else if (cmd.startsWith("/cap ")) {
+        const n = parseInt(trimmed.slice(5).trim(), 10);
+        if (isNaN(n) || n < 0) {
+          addBot(`Invalid number. Try: <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap 5</span>`);
+          return;
+        }
+        setAlertCap({ alertsPerHour: n === 0 ? undefined : n }).then(() => {
+          addBot(n === 0
+            ? `Alert cap removed. You'll receive all alerts.`
+            : `Alert cap set to <strong>${n} per hour</strong> across Telegram and Discord.`
+          );
+        }).catch(() => addBot(`Something went wrong. Please try again.`));
+
       } else if (cmd === "/delete") {
         addBot(
           `⚠️ <strong>This will permanently delete your account and all data.</strong><br><br>` +
@@ -133,7 +157,7 @@ export default function SettingsPanel({ open }: Props) {
         });
 
       } else {
-        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, or <b>/delete</b>.`);
+        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap N</b>, or <b>/delete</b>.`);
       }
     }, 250);
   }

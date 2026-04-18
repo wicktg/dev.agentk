@@ -23,6 +23,8 @@ export const upsertUserSettings = mutation({
     minComments:   v.number(),
     keywordGroups:  v.optional(v.array(v.object({ name: v.string(), keywords: v.array(v.string()) }))),
     activeGroupIdx: v.optional(v.number()),
+    minKarma:       v.optional(v.number()),
+    alertsPerHour:  v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -41,6 +43,19 @@ export const upsertUserSettings = mutation({
     } else {
       await ctx.db.insert("userSettings", { userId, ...args, lastFetchAt: 0 });
     }
+  },
+});
+
+export const setAlertCap = mutation({
+  args: { alertsPerHour: v.optional(v.number()) },
+  handler: async (ctx, { alertsPerHour }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const existing = await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (existing) await ctx.db.patch(existing._id, { alertsPerHour });
   },
 });
 

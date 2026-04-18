@@ -102,6 +102,7 @@ export default function ProductTour() {
 
   const dismiss = () => {
     localStorage.setItem(STORAGE_KEY, "1");
+    window.dispatchEvent(new Event("agentk-tour-done"));
     setVisible(false);
   };
 

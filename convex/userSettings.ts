@@ -1,6 +1,7 @@
 import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 export const getUserSettings = query({
   args: {},
@@ -38,10 +39,18 @@ export const upsertUserSettings = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
 
+    const wasIncomplete = !existing || existing.keywords.length === 0 || (existing.subreddits ?? []).length === 0;
+    const willBeComplete = args.keywords.length > 0 && args.subreddits.length > 0;
+
     if (existing) {
       await ctx.db.patch(existing._id, { ...args });
     } else {
       await ctx.db.insert("userSettings", { userId, ...args, lastFetchAt: 0 });
+    }
+
+    // Kick off an immediate global fetch the first time a user has both keywords and subreddits
+    if (wasIncomplete && willBeComplete) {
+      await ctx.scheduler.runAfter(0, internal.reddit.globalFetch, {});
     }
   },
 });

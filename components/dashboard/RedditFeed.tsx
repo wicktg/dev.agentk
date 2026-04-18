@@ -539,8 +539,16 @@ export default function RedditFeed({ posts, loading }: Props) {
   const [minUpvotes, setMinUpvotes] = useState(0);
   const [minComments, setMinComments] = useState(0);
   const [minKarma, setMinKarma] = useState(0);
-  const [subInput, setSubInput] = useState("");
-  const [loaded, setLoaded] = useState(false);
+  const [subInput, setSubInput]           = useState("");
+  const [loaded, setLoaded]               = useState(false);
+  const [tourDone, setTourDone]           = useState(() =>
+    typeof window !== "undefined" && !!localStorage.getItem("agentk_tour_v1")
+  );
+  const [warmingUpSince, setWarmingUpSince] = useState(() =>
+    typeof window !== "undefined"
+      ? parseInt(localStorage.getItem("agentk_warming_up") ?? "0")
+      : 0
+  );
 
   // Keywords from the currently active group only
   const keywords = keywordGroups[activeGroupIdx]?.keywords ?? [];
@@ -574,6 +582,21 @@ export default function RedditFeed({ posts, loading }: Props) {
       tooltipRef.current = null;
     };
   }, []);
+
+  // React to tour completion
+  useEffect(() => {
+    const handler = () => setTourDone(true);
+    window.addEventListener("agentk-tour-done", handler);
+    return () => window.removeEventListener("agentk-tour-done", handler);
+  }, []);
+
+  // Clear warming-up flag once posts arrive
+  useEffect(() => {
+    if (posts.length > 0 && warmingUpSince > 0) {
+      localStorage.removeItem("agentk_warming_up");
+      setWarmingUpSince(0);
+    }
+  }, [posts.length]);
 
   // Populate from Convex settings
   if (settings && !loaded) {
@@ -616,6 +639,15 @@ export default function RedditFeed({ posts, loading }: Props) {
       minComments: patch.minComments ?? minComments,
       minKarma: patch.minKarma ?? minKarma,
     };
+    // First-time complete setup → show warming-up state after tour
+    const wasIncomplete = !settings || settings.keywords.length === 0 || settings.subreddits.length === 0;
+    const willBeComplete = merged.keywords.length > 0 && merged.subreddits.length > 0;
+    if (wasIncomplete && willBeComplete && !localStorage.getItem("agentk_warming_up")) {
+      const now = Date.now();
+      localStorage.setItem("agentk_warming_up", String(now));
+      setWarmingUpSince(now);
+    }
+
     await upsertSettings(merged);
   }
 
@@ -796,8 +828,13 @@ export default function RedditFeed({ posts, loading }: Props) {
     if (posts.length > 0) appendBatch(renderGen.current);
   }, [posts, appendBatch]);
 
-  const hasKeywords = keywords.length > 0;
+  const hasKeywords   = keywords.length > 0;
   const hasSubreddits = subreddits.length > 0;
+  const WARMING_WINDOW = 10 * 60 * 1000;
+  const isWarmingUp   = tourDone && hasKeywords && hasSubreddits &&
+                        posts.length === 0 && !loading &&
+                        warmingUpSince > 0 &&
+                        Date.now() - warmingUpSince < WARMING_WINDOW;
 
   return (
     <div
@@ -853,6 +890,60 @@ export default function RedditFeed({ posts, loading }: Props) {
             </svg>
             <p style={{ fontSize: "13px", color: "#B2A28C" }}>
               Loading results…
+            </p>
+          </div>
+        ) : isWarmingUp ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              gap: "0",
+            }}
+          >
+            <style>{`
+              @keyframes scan-ring {
+                0%   { transform: scale(1);   opacity: 0.55; }
+                100% { transform: scale(3);   opacity: 0;    }
+              }
+            `}</style>
+
+            {/* Radar animation */}
+            <div style={{ position: "relative", width: "40px", height: "40px", marginBottom: "28px" }}>
+              {[0, 0.65, 1.3].map((delay) => (
+                <div
+                  key={delay}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "50%",
+                    border: "1.5px solid #DF849D",
+                    animation: "scan-ring 2s ease-out infinite",
+                    animationDelay: `${delay}s`,
+                  }}
+                />
+              ))}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "10px",
+                  height: "10px",
+                  borderRadius: "50%",
+                  background: "#DF849D",
+                }}
+              />
+            </div>
+
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#191918", margin: "0 0 8px" }}>
+              Posts are on their way
+            </p>
+            <p style={{ fontSize: "12.5px", color: "#B2A28C", textAlign: "center", maxWidth: "190px", lineHeight: 1.55, margin: 0 }}>
+              AgentK is scanning Reddit now. Your first results will appear here and in your alerts shortly.
             </p>
           </div>
         ) : !loading && posts.length === 0 ? (

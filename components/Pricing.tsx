@@ -1,13 +1,13 @@
 "use client";
 
 const FEATURES = [
-  { label: "Keywords",         value: "50",        icon: "🔑" },
-  { label: "Subreddits",       value: "5",         icon: "📌" },
-  { label: "Alerts",           value: "Unlimited", icon: "🔔" },
-  { label: "Telegram alerts",  value: true,        icon: "✈️" },
-  { label: "Discord alerts",   value: true,        icon: "🎮" },
-  { label: "Karma filter",     value: true,        icon: "⭐" },
-  { label: "Alert cap control",value: true,        icon: "🎛️" },
+  { label: "Keywords",         value: "50"        },
+  { label: "Subreddits",       value: "5"         },
+  { label: "Alerts",           value: "Unlimited" },
+  { label: "Telegram alerts",  value: true        },
+  { label: "Discord alerts",   value: true        },
+  { label: "Karma filter",     value: true        },
+  { label: "Alert cap control",value: true        },
 ];
 
 export default function Pricing() {
@@ -23,9 +23,7 @@ export default function Pricing() {
           pricing
         </h2>
 
-        <p className="text-base font-medium mb-12" style={{ color: "#B2A28C" }}>
-          No plans. No tiers. No credit card.
-        </p>
+        <div className="mb-12" />
 
         {/* Card */}
         <div style={{
@@ -33,7 +31,7 @@ export default function Pricing() {
           borderRadius: "24px",
           border: "1px solid rgba(0,0,0,0.07)",
           overflow: "hidden",
-          boxShadow: "0 4px 40px rgba(223,132,157,0.08)",
+          boxShadow: "none",
         }}>
 
           {/* Header */}
@@ -49,7 +47,7 @@ export default function Pricing() {
 
           {/* Feature rows */}
           <div style={{ padding: "8px 0" }}>
-            {FEATURES.map(({ label, value, icon }, i) => (
+            {FEATURES.map(({ label, value }, i) => (
               <div key={label} style={{
                 display: "flex",
                 alignItems: "center",
@@ -57,10 +55,7 @@ export default function Pricing() {
                 padding: "13px 28px",
                 borderBottom: i < FEATURES.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ fontSize: "15px", lineHeight: 1 }}>{icon}</span>
-                  <span style={{ fontSize: "14px", fontWeight: 500, color: "#62584F" }}>{label}</span>
-                </div>
+                <span style={{ fontSize: "14px", fontWeight: 500, color: "#62584F" }}>{label}</span>
                 {value === true ? (
                   <div style={{
                     width: "22px", height: "22px", borderRadius: "50%",
@@ -72,11 +67,7 @@ export default function Pricing() {
                     </svg>
                   </div>
                 ) : (
-                  <span style={{
-                    fontSize: "13px", fontWeight: 700, color: "#DF849D",
-                    background: "rgba(223,132,157,0.1)", padding: "3px 10px",
-                    borderRadius: "9999px",
-                  }}>{value}</span>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#DF849D" }}>{value}</span>
                 )}
               </div>
             ))}

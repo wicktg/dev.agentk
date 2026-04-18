@@ -2,11 +2,11 @@ export default function Hero() {
   return (
     <section className="relative flex flex-col items-center text-center px-6 max-w-4xl mx-auto pb-20">
       <h1 className="font-headline text-6xl md:text-7xl font-extrabold tracking-tight text-on-surface leading-[1.05] mb-8">
-        Your next customer{" "}
+        Monitor Reddit.{" "}
         <span className="text-primary-container brush-underline italic">
-          just posted
+          Get alerted
         </span>{" "}
-        on Reddit
+        instantly.
       </h1>
 
       <p className="text-xl text-secondary max-w-2xl leading-relaxed mb-10">

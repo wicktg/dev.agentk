@@ -12,13 +12,11 @@ import SettingsPanel from "@/components/dashboard/SettingsPanel";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("reddit");
-  const [loading, setLoading]     = useState(false);
   const router = useRouter();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { signOut }   = useAuthActions();
   const posts         = useQuery(api.reddit.getResults);
-  const triggerFetch  = useMutation(api.reddit.triggerFetch);
   const registerDevice = useMutation(api.devices.registerDevice);
 
   useEffect(() => {
@@ -26,8 +24,6 @@ export default function DashboardPage() {
       router.replace("/");
     }
     if (!authLoading && isAuthenticated) {
-      triggerFetch({}).catch(console.error);
-
       // Device registration + IP dedup check
       fetch("/api/device-ip")
         .then((r) => r.json())
@@ -41,18 +37,6 @@ export default function DashboardPage() {
         });
     }
   }, [authLoading, isAuthenticated, router]);
-
-
-  async function reload() {
-    setLoading(true);
-    try {
-      await triggerFetch({});
-    } catch {
-      // silent — feed stays as-is if fetch fails
-    } finally {
-      setLoading(false);
-    }
-  }
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -72,7 +56,7 @@ export default function DashboardPage() {
       <main style={{ flex: 1, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Reddit feed */}
         <div style={{ display: activeTab === "reddit" ? "flex" : "none", flex: 1, overflow: "hidden" }}>
-          <RedditFeed posts={posts ?? []} loading={loading || posts === undefined} onReload={reload} />
+          <RedditFeed posts={posts ?? []} loading={posts === undefined} />
         </div>
 
         {/* Settings / TG bot */}

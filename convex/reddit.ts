@@ -1,4 +1,4 @@
-import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
@@ -341,16 +341,20 @@ export const globalFetch = internalAction({
         }));
 
       console.log("[globalFetch] userId:", userId, "| matched:", userPosts.length, "posts");
+
+      // 6. Clean up expired posts for this user (>6h old)
+      await ctx.runMutation(internal.reddit.deleteExpiredForUser, { userId });
+
       if (userPosts.length === 0) continue;
 
-      // 6. Upsert into redditResults; get only newly inserted postIds
+      // 7. Upsert into redditResults; get only newly inserted postIds
       const newPostIds = await ctx.runMutation(internal.reddit.upsertResults, {
         userId,
         posts: userPosts,
       });
       console.log("[globalFetch] userId:", userId, "| inserted:", newPostIds.length, "new posts");
 
-      // 7. Send alerts for new posts
+      // 8. Send alerts for new posts
       if (newPostIds.length > 0) {
         await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, { userId, postIds: newPostIds });
         await ctx.scheduler.runAfter(0, internal.discord.sendDiscordAlerts, { userId, postIds: newPostIds });
@@ -359,120 +363,3 @@ export const globalFetch = internalAction({
   },
 });
 
-// ── triggerFetch — manual reload from dashboard ───────────────────────────────
-
-export const triggerFetch = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return { status: "not_authenticated" as const };
-
-    const settings = await ctx.db
-      .query("userSettings")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!settings) return { status: "no_settings" as const };
-
-    await ctx.db.patch(settings._id, { lastFetchAt: Date.now() });
-    await ctx.scheduler.runAfter(0, internal.reddit.doFetch, { userId });
-    return { status: "scheduled" as const };
-  },
-});
-
-// ── doFetch — core pipeline ───────────────────────────────────────────────────
-
-export const doFetch = internalAction({
-  args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
-    const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
-    if (!settings) {
-      console.log("[doFetch] no settings for userId:", userId);
-      return;
-    }
-
-    const { keywords, excluded, subreddits, minUpvotes, minComments } = settings;
-    console.log("[doFetch] start — userId:", userId, "| subreddits:", subreddits, "| keywords:", keywords, "| minUpvotes:", minUpvotes, "| minComments:", minComments);
-
-    await ctx.runMutation(internal.reddit.deleteExpiredForUser, { userId });
-
-    const allPosts: any[] = [];
-    const seen = new Set<string>();
-
-    if (subreddits.length === 0) {
-      console.log("[doFetch] no subreddits — skipping");
-      return;
-    }
-
-    for (const sub of subreddits) {
-      console.log("[doFetch] fetching r/" + sub);
-      const result = await fetchJSON(sub);
-      if (!result) { console.warn("[doFetch] null response for r/" + sub); continue; }
-      const { json, proxyHost } = result;
-      console.log(`[doFetch] r/${sub} via ${proxyHost}`);
-      const children = json.data?.children ?? [];
-      console.log("[doFetch] r/" + sub + " →", children.length, "posts");
-      for (const child of children) {
-        const p = child?.data;
-        if (!p?.id || seen.has(p.id)) continue;
-        seen.add(p.id);
-        allPosts.push(p);
-      }
-    }
-
-    console.log("[doFetch] raw posts collected:", allPosts.length);
-
-    if (allPosts.length === 0) {
-      console.log("[doFetch] 0 raw posts — nothing to store");
-      return;
-    }
-
-    const cutoffSec      = (Date.now() / 1000) - SIX_HOURS_SEC;
-    const excludedLower  = excluded.map((e) => e.toLowerCase());
-    const keywordsLower  = keywords.map((k) => k.toLowerCase());
-    const allowedSubsSet = new Set(subreddits.map((s) => s.toLowerCase()));
-
-    const posts = allPosts
-      .sort((a, b) => (b.created_utc ?? 0) - (a.created_utc ?? 0))
-      .filter((p) => {
-        if ((p.created_utc ?? 0) < cutoffSec) return false;
-        if (allowedSubsSet.size > 0 && !allowedSubsSet.has((p.subreddit ?? "").toLowerCase())) return false;
-        if (keywordsLower.length > 0) {
-          const text = `${p.title ?? ""} ${p.selftext ?? ""}`.toLowerCase();
-          if (!keywordsLower.some((k) => text.includes(k))) return false;
-        }
-        if ((p.ups ?? 0) < minUpvotes) return false;
-        if ((p.num_comments ?? 0) < minComments) return false;
-        const text = `${p.title ?? ""} ${p.selftext ?? ""}`.toLowerCase();
-        if (excludedLower.some((e) => text.includes(e))) return false;
-        return true;
-      })
-      .map((p) => ({
-        postId:      String(p.id),
-        type:        p.is_self ? "self" : "link",
-        title:       p.title ?? undefined,
-        body:        p.selftext ?? "",
-        author:      p.author ?? "",
-        subreddit:   p.subreddit ?? "",
-        url:         `https://www.reddit.com${p.permalink}`,
-        ups:         p.ups ?? 0,
-        numComments: p.num_comments ?? 0,
-        createdUtc:  p.created_utc ?? 0,
-      }));
-
-    console.log("[doFetch] after filters:", posts.length, "/", allPosts.length, "passed");
-
-    if (posts.length === 0) {
-      console.log("[doFetch] 0 posts after filtering — cutoff:", new Date(cutoffSec * 1000).toISOString());
-      return;
-    }
-
-    const newPostIds = await ctx.runMutation(internal.reddit.upsertResults, { userId, posts });
-    console.log("[doFetch] inserted", newPostIds.length, "new posts");
-
-    if (newPostIds.length > 0) {
-      await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, { userId, postIds: newPostIds });
-      await ctx.scheduler.runAfter(0, internal.discord.sendDiscordAlerts, { userId, postIds: newPostIds });
-    }
-  },
-});

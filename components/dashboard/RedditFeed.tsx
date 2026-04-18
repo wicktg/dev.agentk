@@ -21,7 +21,6 @@ interface Post {
 interface Props {
   posts: Post[];
   loading: boolean;
-  onReload: () => void;
 }
 
 // Scatter positions per card within each band: [leftPct, topPctInBand, rotDeg, zIndex]
@@ -525,7 +524,7 @@ function Stepper({
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function RedditFeed({ posts, loading, onReload }: Props) {
+export default function RedditFeed({ posts, loading }: Props) {
   const { isAuthenticated } = useConvexAuth();
   const settings = useQuery(api.userSettings.getUserSettings);
   const upsertSettings = useMutation(api.userSettings.upsertUserSettings);
@@ -890,51 +889,13 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
             >
               {!hasKeywords || !hasSubreddits
                 ? "Use the toolbar → to add keywords and subreddits."
-                : "No matching posts in the last 6h. Try reloading."}
+                : "No matching posts in the last 6h. Check back soon."}
             </p>
           </div>
         ) : (
           <div ref={innerRef} style={{ position: "relative", width: "100%" }} />
         )}
       </div>
-
-      {/* Reload button */}
-      <button
-        onClick={onReload}
-        disabled={loading}
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          zIndex: 20,
-          width: "28px",
-          height: "28px",
-          borderRadius: "50%",
-          background: "none",
-          border: "none",
-          cursor: loading ? "not-allowed" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#B2A28C",
-          opacity: loading ? 0.5 : 1,
-        }}
-      >
-        <svg
-          style={{ animation: loading ? "spin .8s linear infinite" : "none" }}
-          viewBox="0 0 24 24"
-          width="13"
-          height="13"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M1 4v6h6" />
-          <path d="M3.51 15a9 9 0 1 0 .49-4.84" />
-        </svg>
-      </button>
 
       {/* Overlay — closes modal on outside click, sits below toolkit/modal */}
       {activeModal && (

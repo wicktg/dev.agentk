@@ -115,7 +115,7 @@ export default function ProductTour() {
     el.style.transition = "box-shadow 0.25s ease";
     // Feed canvas: inset ring so parent overflow:hidden doesn't clip it
     el.style.boxShadow = current.target === "feed"
-      ? "inset 0 0 0 2px rgba(223, 132, 157, 0.5)"
+      ? "inset 0 0 0 3px #DF849D"
       : "0 0 0 2.5px rgba(223, 132, 157, 0.5)";
     return () => {
       el.style.boxShadow  = prev;

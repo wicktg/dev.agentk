@@ -870,7 +870,7 @@ export default function RedditFeed({ posts, loading }: Props) {
               src={logo}
               alt="AgentK"
               height={36}
-              style={{ animation: "spin 1.4s linear infinite", marginBottom: "22px" }}
+              style={{ animation: "spin 3s linear infinite", marginBottom: "22px" }}
             />
             <p style={{ fontSize: "14px", fontWeight: 600, color: "#191918", margin: 0 }}>
               Posts are on their way

@@ -36,55 +36,6 @@ export default defineSchema({
     alertsPerHour:  v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
-  // ── Billing ──────────────────────────────────────────────────
-
-  userBilling: defineTable({
-    userId:         v.id("users"),
-    plan:           v.union(v.literal("free"), v.literal("pro"), v.literal("ultra")),
-    dodoCustomerId: v.optional(v.string()),
-    updatedAt:      v.number(),
-  })
-    .index("by_user",          ["userId"])
-    .index("by_dodo_customer", ["dodoCustomerId"]),
-
-  subscriptions: defineTable({
-    userId:             v.id("users"),
-    dodoSubscriptionId: v.string(),
-    dodoProductId:      v.string(),
-    plan:               v.union(v.literal("pro"), v.literal("ultra")),
-    interval:           v.union(v.literal("monthly"), v.literal("yearly")),
-    status:             v.union(
-      v.literal("active"),
-      v.literal("on_hold"),
-      v.literal("cancelled"),
-      v.literal("expired"),
-      v.literal("failed"),
-    ),
-    currentPeriodStart: v.number(),
-    currentPeriodEnd:   v.number(),
-    cancelAtPeriodEnd:  v.boolean(),
-    updatedAt:          v.number(),
-    createdAt:          v.number(),
-  })
-    .index("by_user",              ["userId"])
-    .index("by_dodo_subscription", ["dodoSubscriptionId"]),
-
-  payments: defineTable({
-    userId:             v.id("users"),
-    dodoPaymentId:      v.string(),
-    dodoSubscriptionId: v.optional(v.string()),
-    amount:             v.number(),
-    currency:           v.string(),
-    status:             v.union(v.literal("succeeded"), v.literal("failed")),
-    plan:               v.optional(v.union(v.literal("pro"), v.literal("ultra"))),
-    interval:           v.optional(v.union(v.literal("monthly"), v.literal("yearly"))),
-    invoiceUrl:         v.optional(v.string()),
-    paidAt:             v.number(),
-  })
-    .index("by_user",         ["userId"])
-    .index("by_user_paid_at", ["userId", "paidAt"])
-    .index("by_dodo_payment", ["dodoPaymentId"]),
-
   agentTokens: defineTable({
     userId:            v.id("users"),
     token:             v.string(),

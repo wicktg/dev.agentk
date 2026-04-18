@@ -69,12 +69,6 @@ export const deleteAccount = mutation({
       await ctx.db.delete(row._id);
     for (const row of await ctx.db.query("redditResults").withIndex("by_user", (q) => q.eq("userId", userId)).collect())
       await ctx.db.delete(row._id);
-    for (const row of await ctx.db.query("userBilling").withIndex("by_user", (q) => q.eq("userId", userId)).collect())
-      await ctx.db.delete(row._id);
-    for (const row of await ctx.db.query("subscriptions").withIndex("by_user", (q) => q.eq("userId", userId)).collect())
-      await ctx.db.delete(row._id);
-    for (const row of await ctx.db.query("payments").withIndex("by_user", (q) => q.eq("userId", userId)).collect())
-      await ctx.db.delete(row._id);
     for (const row of await ctx.db.query("agentTokens").withIndex("by_user", (q) => q.eq("userId", userId)).collect())
       await ctx.db.delete(row._id);
     for (const row of await ctx.db.query("alertedPosts").withIndex("by_user_post", (q) => q.eq("userId", userId)).collect())

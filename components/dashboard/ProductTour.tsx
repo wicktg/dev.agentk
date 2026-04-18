@@ -27,7 +27,7 @@ const STEPS: TourStep[] = [
     target:    "toolbar",
     placement: "left",
     title:     "Track keywords",
-    body:      "Tap the toolbar to add the keywords you want to monitor — up to 50 at a time.",
+    body:      "Tap the toolbar to add the keywords you want to monitor, up to 50 at a time.",
   },
   {
     target:    "toolbar",

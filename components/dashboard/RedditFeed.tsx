@@ -4,8 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import Image from "next/image";
-import logo from "@/app/logo.png";
 
 interface Post {
   _id: string;
@@ -800,13 +798,6 @@ export default function RedditFeed({ posts, loading }: Props) {
 
   const hasKeywords    = keywords.length > 0;
   const hasSubreddits  = subreddits.length > 0;
-  const firstSetupAt   = settings?.firstSetupAt ?? 0;
-  const WARMING_WINDOW = 15 * 60 * 1000;
-  const isWarmingUp    = settings?.tourCompleted === true &&
-                         hasKeywords && hasSubreddits &&
-                         posts.length === 0 && !loading &&
-                         firstSetupAt > 0 &&
-                         Date.now() - firstSetupAt < WARMING_WINDOW;
 
   return (
     <div
@@ -821,12 +812,6 @@ export default function RedditFeed({ posts, loading }: Props) {
       {/* Spin keyframes injected inline */}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes logo-spin {
-          0%   { transform: rotate(0deg);   animation-timing-function: linear; }
-          65%  { transform: rotate(270deg); animation-timing-function: ease-out; }
-          82%  { transform: rotate(360deg); }
-          100% { transform: rotate(360deg); }
-        }
       `}</style>
 
       {/* Canvas */}
@@ -872,19 +857,7 @@ export default function RedditFeed({ posts, loading }: Props) {
               Loading results…
             </p>
           </div>
-        ) : isWarmingUp ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%" }}>
-            <Image
-              src={logo}
-              alt="AgentK"
-              height={36}
-              style={{ animation: "logo-spin 2.8s linear infinite", marginBottom: "22px" }}
-            />
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#191918", margin: 0 }}>
-              Posts are on their way
-            </p>
-          </div>
-        ) : !loading && posts.length === 0 && settings?.tourCompleted === true ? (
+        ) : !loading && posts.length === 0 ? (
           <div
             style={{
               display: "flex",
@@ -903,9 +876,7 @@ export default function RedditFeed({ posts, loading }: Props) {
               No posts found
             </p>
             <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-              {!hasKeywords || !hasSubreddits
-                ? "Use the toolbar → to add keywords and subreddits."
-                : "No matching posts in the last 6h. Check back soon."}
+              No matching posts found. Check back soon.
             </p>
           </div>
         ) : (
